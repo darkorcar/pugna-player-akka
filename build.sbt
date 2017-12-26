@@ -120,5 +120,19 @@ lazy val commandAliases =
     """|reStart
        |---
        |-Dpugna.player.api.port=8082
-       |-Dpugna.player.api.name=solrac""".stripMargin
-  )
+       |-Dpugna.player.api.name=darko""".stripMargin
+  )++
+    addCommandAlias(
+      "r3",
+      """|reStart
+         |---
+         |-Dpugna.player.api.port=8083
+         |-Dpugna.player.api.name=andy""".stripMargin
+    )++
+    addCommandAlias(
+      "r4",
+      """|reStart
+         |---
+         |-Dpugna.player.api.port=8084
+         |-Dpugna.player.api.name=michael""".stripMargin
+    )

@@ -1,0 +1,1 @@
+web: target/universal/stage/bin/pugna-player -Dpugna.api.port=${PORT}

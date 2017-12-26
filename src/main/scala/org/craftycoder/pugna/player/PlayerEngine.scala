@@ -45,7 +45,8 @@ object PlayerEngine extends Logging {
   case class NextMovement(movement: Movement) extends CalculateNextMovementReply
 
   private def getRandomMovement: Movement = {
-    ALL_MOVEMENTS(Random.nextInt(ALL_MOVEMENTS.size))
+    //ALL_MOVEMENTS(Random.nextInt(ALL_MOVEMENTS.size))
+    UP
   }
 
   private val ALL_MOVEMENTS =

@@ -16,4 +16,4 @@
 
 package org.craftycoder.pugna.player
 
-case class MovementRequest(boardState: BoardState, coordinateToMove: Coordinate)
+case class MovementRequest(boardState: BoardState, positionToMove: Position)

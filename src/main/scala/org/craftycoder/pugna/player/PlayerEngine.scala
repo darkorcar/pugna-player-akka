@@ -25,7 +25,9 @@ object PlayerEngine extends Logging {
 
   val Name = "Dummy-Player-Engine"
 
-  val lastMoveSequence: mutable.LinkedHashMap[Position, Int] =
+  type PositionSequence = Int
+
+  val lastMoveSequence: mutable.LinkedHashMap[Position, PositionSequence] =
     mutable.LinkedHashMap.empty
 
   def nextMovement(movementRequest: MovementRequest)(
@@ -47,195 +49,89 @@ object PlayerEngine extends Logging {
   sealed trait CalculateNextMovementReply
   case class NextMovement(movement: Movement) extends CalculateNextMovementReply
 
-  def moveTowardsEnemy(movementRequest: MovementRequest): Option[Movement] = {
-    ALL_MOVEMENTS.find { move =>
-      val potentialEnemyCoordinate =
-        calculateTargetCoordinates(movementRequest.positionToMove.coordinate,
-                                   move,
-                                   movementRequest.boardState.boardSize)
-      potentialEnemyCoordinate match {
-        case Some(coord) =>
-          val enemyPositions = movementRequest.boardState.positions
-            .filter(_.playerName != movementRequest.positionToMove.playerName)
-            .filter(_.coordinate == coord)
-          enemyPositions.nonEmpty
-        case None =>
-          false
-      }
-    }
-  }
-
   private def getRandomMovement(movementRequest: MovementRequest): Movement = {
-    moveTowardsEnemy(movementRequest) match {
+    movementTowardsEnemy(movementRequest.positionToMove,
+                         movementRequest.boardState) match {
       case Some(moveToEnemy) => moveToEnemy
-      case None => getGenericMovement(movementRequest)
+      case None =>
+        getGenericMovement(movementRequest.positionToMove,
+                           movementRequest.boardState)
     }
   }
 
-  private def getGenericMovement(movementRequest: MovementRequest) = {
-    lastMoveSequence.get(movementRequest.positionToMove) match {
+  private def movementTowardsEnemy(positionToMove: Position,
+                                   boardState: BoardState): Option[Movement] = {
+    ALL_MOVEMENTS.find { move =>
+      isEnemyOccupiedCoordinate(move,
+                                positionToMove.coordinate,
+                                boardState,
+                                positionToMove.playerName)
+    }
+  }
+
+  private def isEnemyOccupiedCoordinate(move: Movement,
+                                        coordinate: Coordinate,
+                                        boardState: BoardState,
+                                        playerName: String): Boolean = {
+    val potentialEnemyCoordinate =
+      calculateTargetCoordinates(coordinate, move, boardState.boardSize)
+    potentialEnemyCoordinate match {
+      case Some(coord) =>
+        boardState.positions
+          .exists(p => p.playerName != playerName && p.coordinate == coord)
+      case None =>
+        false
+    }
+  }
+
+  private def move(
+      lastMoveSeq: mutable.LinkedHashMap[Position, PositionSequence],
+      positionToMove: Position,
+      boardState: BoardState,
+      sequence: PositionSequence,
+      movement: Movement) = {
+    val newCoord = calculateTargetCoordinates(positionToMove.coordinate,
+                                              movement,
+                                              boardState.boardSize)
+
+    newCoord match {
+      case Some(c) =>
+        lastMoveSeq(Position(newCoord.get, positionToMove.playerName)) =
+          sequence
+        lastMoveSeq.remove(positionToMove)
+        movement
+      case None =>
+        lastMoveSequence(positionToMove) = sequence
+        STAY
+    }
+  }
+
+  private def getGenericMovement(positionToMove: Position,
+                                 boardState: BoardState) = {
+    lastMoveSequence.get(positionToMove) match {
       case Some(lastPositionSequence) =>
         lastPositionSequence match {
           case 0 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              UP,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                           movementRequest.positionToMove.playerName)) = 1
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                UP
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 1
-                STAY
-            }
+            move(lastMoveSequence, positionToMove, boardState, 1, UP)
           case 1 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              RIGHT,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                           movementRequest.positionToMove.playerName)) = 2
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                RIGHT
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 2
-                STAY
-            }
+            move(lastMoveSequence, positionToMove, boardState, 2, RIGHT)
           case 2 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              DOWN,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                           movementRequest.positionToMove.playerName)) = 3
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                DOWN
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 3
-                STAY
-            }
+            move(lastMoveSequence, positionToMove, boardState, 3, DOWN)
           case 3 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              DOWN,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                           movementRequest.positionToMove.playerName)) = 4
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                DOWN
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 4
-                STAY
-            }
+            move(lastMoveSequence, positionToMove, boardState, 4, DOWN)
           case 4 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              LEFT,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                           movementRequest.positionToMove.playerName)) = 5
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                LEFT
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 5
-                STAY
-            }
+            move(lastMoveSequence, positionToMove, boardState, 5, LEFT)
           case 5 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              LEFT,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                           movementRequest.positionToMove.playerName)) = 6
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                LEFT
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 6
-                STAY
-            }
+            move(lastMoveSequence, positionToMove, boardState, 6, LEFT)
           case 6 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              UP,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                           movementRequest.positionToMove.playerName)) = 7
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                UP
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 7
-                STAY
-            }
+            move(lastMoveSequence, positionToMove, boardState, 7, UP)
           case 7 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              UP,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                           movementRequest.positionToMove.playerName)) = 8
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                UP
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 8
-                STAY
-            }
+            move(lastMoveSequence, positionToMove, boardState, 8, UP)
           case 8 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              RIGHT,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                           movementRequest.positionToMove.playerName)) = 1
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                RIGHT
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 1
-                STAY
-            }
+            move(lastMoveSequence, positionToMove, boardState, 1, RIGHT)
         }
       case None =>
-        val newCoord = calculateTargetCoordinates(
-          movementRequest.positionToMove.coordinate,
-          UP,
-          movementRequest.boardState.boardSize)
-        newCoord match {
-          case Some(c) =>
-            lastMoveSequence(
-              Position(newCoord.get,
-                       movementRequest.positionToMove.playerName)) = 1
-            UP
-          case None =>
-            lastMoveSequence(movementRequest.positionToMove) = 1
-            STAY
-        }
+        move(lastMoveSequence, positionToMove, boardState, 1, UP)
     }
   }
 

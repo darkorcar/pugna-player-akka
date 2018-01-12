@@ -85,6 +85,9 @@ object Api extends Logging {
     import ErrorAccumulatingCirceSupport._
     import io.circe.generic.auto._
 
+    pathSingleSlash {
+      complete("You've reached Pugna player. Have fun!")
+    } ~
     path("nextmove") {
       pathEndOrSingleSlash {
         post {

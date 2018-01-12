@@ -88,20 +88,21 @@ object Api extends Logging {
     pathSingleSlash {
       complete("You've reached Pugna player. Have fun!")
     } ~
-    path("nextmove") {
-      pathEndOrSingleSlash {
-        post {
-          logger.debug("nextmove received")
-          entity(as[MovementRequest]) { movementRequest =>
-            onSuccess(playerEngine ? PlayerEngine.nextMovement(movementRequest)) {
-              case NextMovement(movement) =>
-                logger.debug(s"Replying with $movement")
-                complete(movement.toString)
+      path("nextmove") {
+        pathEndOrSingleSlash {
+          post {
+            logger.debug("nextmove received")
+            entity(as[MovementRequest]) { movementRequest =>
+              onSuccess(
+                playerEngine ? PlayerEngine.nextMovement(movementRequest)) {
+                case NextMovement(movement) =>
+                  logger.debug(s"Replying with $movement")
+                  complete(movement.toString)
+              }
             }
           }
         }
-      }
-    } ~
+      } ~
       path("ping") {
         get {
           logger.debug("Ping received")

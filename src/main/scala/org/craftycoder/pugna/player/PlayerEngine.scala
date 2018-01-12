@@ -29,7 +29,7 @@ object PlayerEngine extends Logging {
     mutable.LinkedHashMap.empty
 
   def nextMovement(movementRequest: MovementRequest)(
-    replyTo: ActorRef[CalculateNextMovementReply]): CalculateNextMovement =
+      replyTo: ActorRef[CalculateNextMovementReply]): CalculateNextMovement =
     CalculateNextMovement(movementRequest, replyTo)
 
   def apply(): Behavior[Command] = Actor.immutable {
@@ -40,36 +40,42 @@ object PlayerEngine extends Logging {
 
   sealed trait Command
   case class CalculateNextMovement(
-                                    movementRequest: MovementRequest,
-                                    actorRef: ActorRef[CalculateNextMovementReply])
-    extends Command
+      movementRequest: MovementRequest,
+      actorRef: ActorRef[CalculateNextMovementReply])
+      extends Command
 
   sealed trait CalculateNextMovementReply
   case class NextMovement(movement: Movement) extends CalculateNextMovementReply
 
-  var lastOffsetMovement: Movement = DOWN_LEFT
+  def moveTowardsEnemy(movementRequest: MovementRequest): Option[Movement] = {
+    ALL_MOVEMENTS.find { move =>
+      val potentialEnemyCoordinate =
+        calculateTargetCoordinates(movementRequest.positionToMove.coordinate,
+                                   move,
+                                   movementRequest.boardState.boardSize)
+      potentialEnemyCoordinate match {
+        case Some(coord) =>
+          val enemyPositions = movementRequest.boardState.positions
+            .filter(_.playerName != movementRequest.positionToMove.playerName)
+            .filter(_.coordinate == coord)
+          enemyPositions.nonEmpty
+        case None =>
+          false
+      }
+    }
+  }
 
   private def getRandomMovement(movementRequest: MovementRequest): Movement = {
+    moveTowardsEnemy(movementRequest) match {
+      case Some(moveToEnemy) => moveToEnemy
+      case None => getGenericMovement(movementRequest)
+    }
+  }
+
+  private def getGenericMovement(movementRequest: MovementRequest) = {
     lastMoveSequence.get(movementRequest.positionToMove) match {
       case Some(lastPositionSequence) =>
         lastPositionSequence match {
-          case -1 =>
-            val newCoord = calculateTargetCoordinates(
-              movementRequest.positionToMove.coordinate,
-              lastOffsetMovement,
-              movementRequest.boardState.boardSize)
-            newCoord match {
-              case Some(c) =>
-                lastMoveSequence(
-                  Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 0
-                lastMoveSequence.remove(movementRequest.positionToMove)
-                lastOffsetMovement
-              case None =>
-                lastMoveSequence(movementRequest.positionToMove) = 0
-                lastOffsetMovement = DOWN_RIGHT
-                lastOffsetMovement
-            }
           case 0 =>
             val newCoord = calculateTargetCoordinates(
               movementRequest.positionToMove.coordinate,
@@ -79,7 +85,7 @@ object PlayerEngine extends Logging {
               case Some(c) =>
                 lastMoveSequence(
                   Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 1
+                           movementRequest.positionToMove.playerName)) = 1
                 lastMoveSequence.remove(movementRequest.positionToMove)
                 UP
               case None =>
@@ -95,7 +101,7 @@ object PlayerEngine extends Logging {
               case Some(c) =>
                 lastMoveSequence(
                   Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 2
+                           movementRequest.positionToMove.playerName)) = 2
                 lastMoveSequence.remove(movementRequest.positionToMove)
                 RIGHT
               case None =>
@@ -111,7 +117,7 @@ object PlayerEngine extends Logging {
               case Some(c) =>
                 lastMoveSequence(
                   Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 3
+                           movementRequest.positionToMove.playerName)) = 3
                 lastMoveSequence.remove(movementRequest.positionToMove)
                 DOWN
               case None =>
@@ -127,7 +133,7 @@ object PlayerEngine extends Logging {
               case Some(c) =>
                 lastMoveSequence(
                   Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 4
+                           movementRequest.positionToMove.playerName)) = 4
                 lastMoveSequence.remove(movementRequest.positionToMove)
                 DOWN
               case None =>
@@ -143,7 +149,7 @@ object PlayerEngine extends Logging {
               case Some(c) =>
                 lastMoveSequence(
                   Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 5
+                           movementRequest.positionToMove.playerName)) = 5
                 lastMoveSequence.remove(movementRequest.positionToMove)
                 LEFT
               case None =>
@@ -159,7 +165,7 @@ object PlayerEngine extends Logging {
               case Some(c) =>
                 lastMoveSequence(
                   Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 6
+                           movementRequest.positionToMove.playerName)) = 6
                 lastMoveSequence.remove(movementRequest.positionToMove)
                 LEFT
               case None =>
@@ -175,7 +181,7 @@ object PlayerEngine extends Logging {
               case Some(c) =>
                 lastMoveSequence(
                   Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 7
+                           movementRequest.positionToMove.playerName)) = 7
                 lastMoveSequence.remove(movementRequest.positionToMove)
                 UP
               case None =>
@@ -191,7 +197,7 @@ object PlayerEngine extends Logging {
               case Some(c) =>
                 lastMoveSequence(
                   Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 8
+                           movementRequest.positionToMove.playerName)) = 8
                 lastMoveSequence.remove(movementRequest.positionToMove)
                 UP
               case None =>
@@ -207,7 +213,7 @@ object PlayerEngine extends Logging {
               case Some(c) =>
                 lastMoveSequence(
                   Position(newCoord.get,
-                    movementRequest.positionToMove.playerName)) = 1
+                           movementRequest.positionToMove.playerName)) = 1
                 lastMoveSequence.remove(movementRequest.positionToMove)
                 RIGHT
               case None =>
@@ -224,18 +230,17 @@ object PlayerEngine extends Logging {
           case Some(c) =>
             lastMoveSequence(
               Position(newCoord.get,
-                movementRequest.positionToMove.playerName)) = 0
+                       movementRequest.positionToMove.playerName)) = 1
             UP
           case None =>
-            lastMoveSequence(movementRequest.positionToMove) = 0
+            lastMoveSequence(movementRequest.positionToMove) = 1
             STAY
         }
     }
-
   }
 
   private val ALL_MOVEMENTS =
-    Seq(STAY, UP, UP_LEFT, UP_RIGHT, RIGHT, LEFT, DOWN, DOWN_LEFT, DOWN_RIGHT)
+    Seq(UP, UP_LEFT, UP_RIGHT, RIGHT, LEFT, DOWN, DOWN_LEFT, DOWN_RIGHT)
 
   private def calculateTargetCoordinates(coordinate: Coordinate,
                                          movement: Movement,
@@ -267,6 +272,11 @@ object PlayerEngine extends Logging {
       case Coordinate(x, y) if x >= boardSize || y >= boardSize => None
       case validCoordinates                                     => Some(validCoordinates)
     }
+  }
+
+  private def calculateMovementToTargetCoordinates(coordinate: Coordinate,
+                                                   boardSize: Int): Movement = {
+    UP
   }
 
 }

@@ -84,15 +84,28 @@ object PlayerEngine extends Logging {
     }
   }
 
+  private def newFriendlyUnoccupiedCoordinate(
+      move: Movement,
+      coordinate: Coordinate,
+      boardState: BoardState,
+      playerName: String): Option[Coordinate] = {
+    for {
+      newCoord <- calculateTargetCoordinates(coordinate, move, boardState.boardSize)
+      if !boardState.positions
+        .exists(p => p.playerName == playerName && p.coordinate == newCoord)
+    } yield newCoord
+  }
+
   private def move(
       lastMoveSeq: mutable.LinkedHashMap[Position, PositionSequence],
       positionToMove: Position,
       boardState: BoardState,
       sequence: PositionSequence,
       movement: Movement) = {
-    val newCoord = calculateTargetCoordinates(positionToMove.coordinate,
-                                              movement,
-                                              boardState.boardSize)
+    val newCoord = newFriendlyUnoccupiedCoordinate(movement,
+                                                positionToMove.coordinate,
+                                                boardState,
+                                                positionToMove.playerName)
 
     newCoord match {
       case Some(c) =>
